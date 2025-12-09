@@ -47,10 +47,10 @@ type detectInput struct {
 
 // detectOutput 检测响应输出
 type detectOutput struct {
-	Success     bool                `json:"success"`
+	Success     bool                 `json:"success"`
 	Results     []ai.DetectionResult `json:"results"`
-	ProcessTime float64             `json:"process_time_ms"`
-	Alerts      []*ai.Alert         `json:"alerts,omitempty"`
+	ProcessTime float64              `json:"process_time_ms"`
+	Alerts      []*ai.Alert          `json:"alerts,omitempty"`
 }
 
 // detect 执行 AI 检测

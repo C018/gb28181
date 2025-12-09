@@ -8,13 +8,13 @@ type Bootstrap struct {
 	ConfigDir    string `toml:"-" json:"-"`
 	ConfigPath   string `toml:"-" json:"-"`
 
-	Server   Server   // 服务器
-	Data     Data     // 数据
-	Log      Log      // 日志
-	Sip      SIP
-	Media    Media    // 媒体
-	GoLive   GoLive   // Go 流媒体服务
-	AI       AI       // AI 检测服务
+	Server Server // 服务器
+	Data   Data   // 数据
+	Log    Log    // 日志
+	Sip    SIP
+	Media  Media  // 媒体
+	GoLive GoLive // Go 流媒体服务
+	AI     AI     // AI 检测服务
 }
 
 type Server struct {
