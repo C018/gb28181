@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/gowvp/gb28181/pkg/ai"
 	"github.com/ixugo/goddd/pkg/web"
 )
 
@@ -218,29 +217,24 @@ func (n *NotificationHub) NotifyAlarmSubscriptionChanged(deviceID string, subscr
 }
 
 // NotifyAIAlert 发送 AI 告警通知
-func (n *NotificationHub) NotifyAIAlert(alert *ai.Alert) {
+// alertData 应包含: alert_id, channel_id, rule_id, type, detections, created_at
+func (n *NotificationHub) NotifyAIAlert(alertData map[string]any) {
 	n.Broadcast(Notification{
 		Type:    NotifyTypeAIAlert,
 		Message: "AI 检测告警",
-		Data: map[string]any{
-			"alert_id":   alert.ID,
-			"channel_id": alert.ChannelID,
-			"rule_id":    alert.RuleID,
-			"type":       alert.Type,
-			"detections": alert.Detections,
-			"created_at": alert.CreatedAt,
-		},
+		Data:    alertData,
 	})
 }
 
 // registerNotificationAPI 注册通知 API
 func registerNotificationAPI(g gin.IRouter, api NotificationAPI, handler ...gin.HandlerFunc) {
 	group := g.Group("/notifications", handler...)
-	group.GET("/subscribe", web.WrapH(api.subscribeNotifications))
+	// SSE endpoint doesn't use WrapH as it directly handles the response
+	group.GET("/subscribe", api.subscribeNotifications)
 }
 
 // subscribeNotifications 订阅实时通知 (SSE)
-func (api NotificationAPI) subscribeNotifications(c *gin.Context, _ *struct{}) (gin.H, error) {
+func (api NotificationAPI) subscribeNotifications(c *gin.Context) {
 	clientID := uuid.NewString()
 	se := web.NewSSE(64, 30*time.Minute)
 
@@ -263,5 +257,4 @@ func (api NotificationAPI) subscribeNotifications(c *gin.Context, _ *struct{}) (
 	}()
 
 	se.ServeHTTP(c.Writer, c.Request)
-	return nil, nil
 }

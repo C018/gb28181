@@ -91,7 +91,14 @@ func (a AIAPI) detect(c *gin.Context, in *detectInput) (*detectOutput, error) {
 	// 发送告警通知
 	if a.uc != nil && a.uc.NotificationAPI.hub != nil {
 		for _, alert := range alerts {
-			a.uc.NotificationAPI.hub.NotifyAIAlert(alert)
+			a.uc.NotificationAPI.hub.NotifyAIAlert(map[string]any{
+				"alert_id":   alert.ID,
+				"channel_id": alert.ChannelID,
+				"rule_id":    alert.RuleID,
+				"type":       alert.Type,
+				"detections": alert.Detections,
+				"created_at": alert.CreatedAt,
+			})
 		}
 	}
 
