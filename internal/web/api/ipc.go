@@ -180,6 +180,20 @@ func (a IPCAPI) addDevice(c *gin.Context, in *ipc.AddDeviceInput) (any, error) {
 	if !slices.Contains([]string{ipc.TypeGB28181, ipc.TypeOnvif}, in.Type) {
 		return nil, reason.ErrBadRequest.SetMsg("不支持的设备类型")
 	}
+
+	// GB28181 设备 ID 长度校验（标准为 20 位）
+	if in.Type == ipc.TypeGB28181 {
+		if len(in.DeviceID) != 20 {
+			return nil, reason.ErrBadRequest.SetMsg(fmt.Sprintf("GB28181 设备 ID 必须为 20 位（当前: %d 位），少或多都可能导致信令故障", len(in.DeviceID)))
+		}
+		// 验证是否为纯数字
+		for _, ch := range in.DeviceID {
+			if ch < '0' || ch > '9' {
+				return nil, reason.ErrBadRequest.SetMsg("GB28181 设备 ID 必须为纯数字")
+			}
+		}
+	}
+
 	return a.ipc.AddDevice(c.Request.Context(), in)
 }
 

@@ -111,8 +111,8 @@ func setupRouter(r *gin.Engine, uc *Usecase) {
 		registerAIAPI(r, uc.AIAPI, auth) // AI 检测 API
 	}
 
-	// 反向代理流媒体数据
-	r.Any("/proxy/sms/*path", uc.proxySMS)
+	// 反向代理流媒体数据（需要鉴权）
+	r.Any("/proxy/sms/*path", auth, uc.proxySMS)
 }
 
 type playOutput struct {
