@@ -106,6 +106,7 @@ func setupRouter(r *gin.Engine, uc *Usecase) {
 	registerPTZAPI(r, uc.GB28181API, auth)      // 云台控制 API
 	registerPlaybackAPI(r, uc.GB28181API, auth) // 录像回放 API
 	registerAlarmAPI(r, uc.GB28181API, auth)    // 报警事件 API
+	// AIAPI 是结构体不是指针，但 aiService 字段可能为 nil
 	if uc.AIAPI.aiService != nil {
 		registerAIAPI(r, uc.AIAPI, auth) // AI 检测 API
 	}

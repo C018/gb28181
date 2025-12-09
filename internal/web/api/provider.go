@@ -77,6 +77,7 @@ func (uc *Usecase) Cleanup() {
 			logger.Error("Failed to stop GoLive server", "err", err)
 		}
 	}
+	// AIAPI 是结构体不是指针，但 aiService 字段可能为 nil
 	if uc.AIAPI.aiService != nil {
 		if err := uc.AIAPI.aiService.Close(); err != nil {
 			logger.Error("Failed to close AI service", "err", err)
