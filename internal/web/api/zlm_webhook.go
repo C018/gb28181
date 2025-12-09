@@ -90,7 +90,7 @@ func (w WebHookAPI) onStreamChanged(c *gin.Context, in *onStreamChangedInput) (D
 	w.log.InfoContext(c.Request.Context(), "webhook onStreamChanged", "app", in.App, "stream", in.Stream, "schema", in.Schema, "mediaServerID", in.MediaServerID, "regist", in.Regist)
 
 	// 发送实时通知
-	NotifyStreamStatus(in.App, in.Stream, in.Regist)
+	w.uc.NotificationAPI.hub.NotifyStreamStatus(in.App, in.Stream, in.Regist)
 
 	if in.Regist || in.Schema != "rtmp" {
 		return newDefaultOutputOK(), nil

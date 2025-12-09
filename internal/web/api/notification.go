@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/gowvp/gb28181/pkg/ai"
 	"github.com/ixugo/goddd/pkg/web"
 )
 
@@ -52,20 +53,7 @@ type NotificationHub struct {
 	clients map[string]*web.SSE
 }
 
-// NewNotificationHub 创建通知中心
-func NewNotificationHub() *NotificationHub {
-	return &NotificationHub{
-		clients: make(map[string]*web.SSE),
-	}
-}
 
-// globalNotificationHub 全局通知中心实例
-var globalNotificationHub = NewNotificationHub()
-
-// GetNotificationHub 获取全局通知中心
-func GetNotificationHub() *NotificationHub {
-	return globalNotificationHub
-}
 
 // AddClient 添加客户端
 func (h *NotificationHub) AddClient(id string, sse *web.SSE) {
@@ -119,9 +107,18 @@ func (h *NotificationHub) Broadcast(notification Notification) {
 	}
 }
 
+// NotificationAPI 通知 API
+type NotificationAPI struct {
+	hub *NotificationHub
+}
+
+// NewNotificationAPI 创建通知 API
+func NewNotificationAPI(hub *NotificationHub) NotificationAPI {
+	return NotificationAPI{hub: hub}
+}
+
 // NotifyDeviceStatus 通知设备状态变化
-func NotifyDeviceStatus(deviceID, deviceName string, online bool) {
-	hub := GetNotificationHub()
+func (n *NotificationHub) NotifyDeviceStatus(deviceID, deviceName string, online bool) {
 	notifyType := NotifyDeviceOffline
 	message := "设备离线"
 	if online {
@@ -129,7 +126,7 @@ func NotifyDeviceStatus(deviceID, deviceName string, online bool) {
 		message = "设备上线"
 	}
 
-	hub.Broadcast(Notification{
+	n.Broadcast(Notification{
 		Type:    notifyType,
 		Message: message,
 		Data: map[string]any{
@@ -141,8 +138,7 @@ func NotifyDeviceStatus(deviceID, deviceName string, online bool) {
 }
 
 // NotifyStreamStatus 通知流状态变化
-func NotifyStreamStatus(app, stream string, started bool) {
-	hub := GetNotificationHub()
+func (n *NotificationHub) NotifyStreamStatus(app, stream string, started bool) {
 	notifyType := NotifyStreamStop
 	message := "流已停止"
 	if started {
@@ -150,7 +146,7 @@ func NotifyStreamStatus(app, stream string, started bool) {
 		message = "流已开始"
 	}
 
-	hub.Broadcast(Notification{
+	n.Broadcast(Notification{
 		Type:    notifyType,
 		Message: message,
 		Data: map[string]any{
@@ -162,8 +158,7 @@ func NotifyStreamStatus(app, stream string, started bool) {
 }
 
 // NotifyRecordStatus 通知录像状态变化
-func NotifyRecordStatus(app, stream string, started bool) {
-	hub := GetNotificationHub()
+func (n *NotificationHub) NotifyRecordStatus(app, stream string, started bool) {
 	notifyType := NotifyRecordStop
 	message := "录像已停止"
 	if started {
@@ -171,7 +166,7 @@ func NotifyRecordStatus(app, stream string, started bool) {
 		message = "录像已开始"
 	}
 
-	hub.Broadcast(Notification{
+	n.Broadcast(Notification{
 		Type:    notifyType,
 		Message: message,
 		Data: map[string]any{
@@ -183,9 +178,8 @@ func NotifyRecordStatus(app, stream string, started bool) {
 }
 
 // NotifyError 通知错误
-func NotifyError(message string, data any) {
-	hub := GetNotificationHub()
-	hub.Broadcast(Notification{
+func (n *NotificationHub) NotifyError(message string, data any) {
+	n.Broadcast(Notification{
 		Type:    NotifyTypeError,
 		Message: message,
 		Data:    data,
@@ -193,9 +187,8 @@ func NotifyError(message string, data any) {
 }
 
 // NotifyAlarmEvent 通知报警事件
-func NotifyAlarmEvent(deviceID, channelID, alarmType, alarmPriority, description string) {
-	hub := GetNotificationHub()
-	hub.Broadcast(Notification{
+func (n *NotificationHub) NotifyAlarmEvent(deviceID, channelID, alarmType, alarmPriority, description string) {
+	n.Broadcast(Notification{
 		Type:    NotifyTypeAlarm,
 		Message: "收到报警事件",
 		Data: map[string]any{
@@ -209,13 +202,12 @@ func NotifyAlarmEvent(deviceID, channelID, alarmType, alarmPriority, description
 }
 
 // NotifyAlarmSubscriptionChanged 通知报警订阅状态变更
-func NotifyAlarmSubscriptionChanged(deviceID string, subscribed bool) {
-	hub := GetNotificationHub()
+func (n *NotificationHub) NotifyAlarmSubscriptionChanged(deviceID string, subscribed bool) {
 	message := "已取消报警订阅"
 	if subscribed {
 		message = "已订阅报警"
 	}
-	hub.Broadcast(Notification{
+	n.Broadcast(Notification{
 		Type:    NotifyTypeAlarmSubscribed,
 		Message: message,
 		Data: map[string]any{
@@ -225,19 +217,34 @@ func NotifyAlarmSubscriptionChanged(deviceID string, subscribed bool) {
 	})
 }
 
+// NotifyAIAlert 发送 AI 告警通知
+func (n *NotificationHub) NotifyAIAlert(alert *ai.Alert) {
+	n.Broadcast(Notification{
+		Type:    NotifyTypeAIAlert,
+		Message: "AI 检测告警",
+		Data: map[string]any{
+			"alert_id":   alert.ID,
+			"channel_id": alert.ChannelID,
+			"rule_id":    alert.RuleID,
+			"type":       alert.Type,
+			"detections": alert.Detections,
+			"created_at": alert.CreatedAt,
+		},
+	})
+}
+
 // registerNotificationAPI 注册通知 API
-func registerNotificationAPI(g gin.IRouter, handler ...gin.HandlerFunc) {
+func registerNotificationAPI(g gin.IRouter, api NotificationAPI, handler ...gin.HandlerFunc) {
 	group := g.Group("/notifications", handler...)
-	group.GET("/subscribe", subscribeNotifications)
+	group.GET("/subscribe", web.WrapH(api.subscribeNotifications))
 }
 
 // subscribeNotifications 订阅实时通知 (SSE)
-func subscribeNotifications(c *gin.Context) {
+func (api NotificationAPI) subscribeNotifications(c *gin.Context, _ *struct{}) (gin.H, error) {
 	clientID := uuid.NewString()
 	se := web.NewSSE(64, 30*time.Minute)
 
-	hub := GetNotificationHub()
-	hub.AddClient(clientID, se)
+	api.hub.AddClient(clientID, se)
 
 	// 发送连接成功通知
 	se.Publish(web.Event{
@@ -250,10 +257,11 @@ func subscribeNotifications(c *gin.Context) {
 
 	// 使用 defer 确保在连接关闭时移除客户端
 	defer func() {
-		hub.RemoveClient(clientID)
+		api.hub.RemoveClient(clientID)
 		se.Close()
 		slog.Info("client unsubscribed from notifications", "client_id", clientID)
 	}()
 
 	se.ServeHTTP(c.Writer, c.Request)
+	return nil, nil
 }

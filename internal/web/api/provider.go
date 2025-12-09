@@ -45,6 +45,7 @@ var (
 		NewUserAPI,
 		NewAIService, NewAIAPI,
 		NewGoLiveServer,
+		NewNotificationHub, NewNotificationAPI,
 	)
 )
 
@@ -52,16 +53,17 @@ var (
 var globalUsecase *Usecase
 
 type Usecase struct {
-	Conf       *conf.Bootstrap
-	DB         *gorm.DB
-	Version    versionapi.API
-	SMSAPI     SmsAPI
-	WebHookAPI WebHookAPI
-	UniqueID   uniqueid.Core
-	MediaAPI   PushAPI
-	GB28181API IPCAPI
-	ProxyAPI   ProxyAPI
-	ConfigAPI  ConfigAPI
+	Conf            *conf.Bootstrap
+	DB              *gorm.DB
+	Version         versionapi.API
+	SMSAPI          SmsAPI
+	WebHookAPI      WebHookAPI
+	UniqueID        uniqueid.Core
+	MediaAPI        PushAPI
+	GB28181API      IPCAPI
+	ProxyAPI        ProxyAPI
+	ConfigAPI       ConfigAPI
+	NotificationAPI NotificationAPI
 
 	SipServer    *gbs.Server
 	UserAPI      UserAPI
@@ -121,7 +123,7 @@ func NewHTTPHandler(uc *Usecase) http.Handler {
 
 	// 设置报警通知回调，将报警事件发送到通知中心
 	uc.SipServer.SetAlarmCallback(func(deviceID, channelID, alarmType, alarmPriority, description string) {
-		NotifyAlarmEvent(deviceID, channelID, alarmType, alarmPriority, description)
+		uc.NotificationAPI.hub.NotifyAlarmEvent(deviceID, channelID, alarmType, alarmPriority, description)
 	})
 
 	setupRouter(g, uc) // 设置路由处理函数
@@ -195,4 +197,11 @@ func NewGoLiveServer(bc *conf.Bootstrap) *golive.Server {
 		EnableRecord: bc.GoLive.EnableRecord,
 	}
 	return golive.NewServer(config)
+}
+
+// NewNotificationHub 创建通知中心
+func NewNotificationHub() *NotificationHub {
+	return &NotificationHub{
+		clients: make(map[string]*web.SSE),
+	}
 }
