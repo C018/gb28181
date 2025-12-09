@@ -71,11 +71,16 @@ type Usecase struct {
 
 // Cleanup 清理资源
 func (uc *Usecase) Cleanup() {
+	logger := slog.Default()
 	if uc.GoLiveServer != nil {
-		_ = uc.GoLiveServer.Stop()
+		if err := uc.GoLiveServer.Stop(); err != nil {
+			logger.Error("Failed to stop GoLive server", "err", err)
+		}
 	}
 	if uc.AIAPI.aiService != nil {
-		_ = uc.AIAPI.aiService.Close()
+		if err := uc.AIAPI.aiService.Close(); err != nil {
+			logger.Error("Failed to close AI service", "err", err)
+		}
 	}
 }
 
@@ -106,9 +111,13 @@ func NewHTTPHandler(uc *Usecase) http.Handler {
 	// 启动 Go 流媒体服务器
 	if uc.GoLiveServer != nil && uc.Conf.GoLive.Enabled {
 		if err := uc.GoLiveServer.Start(); err != nil {
-			// 记录错误但不阻止应用启动
-			slog := slog.Default()
-			slog.Error("Failed to start GoLive server", "err", err)
+			// GoLive 是可选功能，启动失败不应阻止主应用运行
+			// 用户仍可使用 ZLMediaKit 作为流媒体服务器
+			logger := slog.Default()
+			logger.Error("Failed to start GoLive server, continuing with ZLMediaKit", "err", err)
+		} else {
+			logger := slog.Default()
+			logger.Info("GoLive streaming server started successfully")
 		}
 	}
 
