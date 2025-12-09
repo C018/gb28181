@@ -35,9 +35,9 @@ const (
 	PTZCmdRightDown = 0x05 // 右下
 
 	// 镜头控制
-	PTZCmdIrisIn  = 0x44 // 光圈放大
-	PTZCmdIrisOut = 0x48 // 光圈缩小
-	PTZCmdFocusIn = 0x41 // 聚焦+
+	PTZCmdIrisIn   = 0x44 // 光圈放大
+	PTZCmdIrisOut  = 0x48 // 光圈缩小
+	PTZCmdFocusIn  = 0x41 // 聚焦+
 	PTZCmdFocusOut = 0x42 // 聚焦-
 
 	// 预置位控制
@@ -48,11 +48,11 @@ const (
 
 // PTZControlRequest PTZ 控制请求
 type PTZControlRequest struct {
-	XMLName   xml.Name `xml:"Control"`
-	CmdType   string   `xml:"CmdType"`
-	SN        int      `xml:"SN"`
-	DeviceID  string   `xml:"DeviceID"`
-	PTZCmd    string   `xml:"PTZCmd"`
+	XMLName  xml.Name `xml:"Control"`
+	CmdType  string   `xml:"CmdType"`
+	SN       int      `xml:"SN"`
+	DeviceID string   `xml:"DeviceID"`
+	PTZCmd   string   `xml:"PTZCmd"`
 }
 
 // BuildPTZCmd 构建 PTZ 控制指令

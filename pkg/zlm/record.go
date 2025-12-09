@@ -106,25 +106,25 @@ func (e *Engine) IsRecording(req IsRecordingRequest) (*IsRecordingResponse, erro
 
 // GetMp4RecordFileRequest 获取录像文件请求
 type GetMp4RecordFileRequest struct {
-	Vhost     string `json:"vhost"`      // 流的虚拟主机
-	App       string `json:"app"`        // 流的应用名
-	Stream    string `json:"stream"`     // 流 ID
-	Period    string `json:"period"`     // 日期，格式为 2020-02-01
-	Customize string `json:"customize"`  // 是否为自定义路径录像
+	Vhost     string `json:"vhost"`     // 流的虚拟主机
+	App       string `json:"app"`       // 流的应用名
+	Stream    string `json:"stream"`    // 流 ID
+	Period    string `json:"period"`    // 日期，格式为 2020-02-01
+	Customize string `json:"customize"` // 是否为自定义路径录像
 }
 
 // GetMp4RecordFileResponse 获取录像文件响应
 type GetMp4RecordFileResponse struct {
-	Code   int                  `json:"code"`
-	Data   *Mp4RecordFileFolder `json:"data,omitempty"`
-	Msg    string               `json:"msg"`
-	RootPath string             `json:"rootPath,omitempty"`
+	Code     int                  `json:"code"`
+	Data     *Mp4RecordFileFolder `json:"data,omitempty"`
+	Msg      string               `json:"msg"`
+	RootPath string               `json:"rootPath,omitempty"`
 }
 
 // Mp4RecordFileFolder 录像文件夹
 type Mp4RecordFileFolder struct {
-	Paths   []string                `json:"paths,omitempty"`
-	Folders []string                `json:"folders,omitempty"`
+	Paths   []string `json:"paths,omitempty"`
+	Folders []string `json:"folders,omitempty"`
 }
 
 // GetMp4RecordFile 获取录像文件列表

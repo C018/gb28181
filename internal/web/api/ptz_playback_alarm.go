@@ -20,10 +20,10 @@ func registerPTZAPI(g gin.IRouter, api IPCAPI, handler ...gin.HandlerFunc) {
 
 // ptzControlInput 云台控制输入
 type ptzControlInput struct {
-	DeviceID  string `json:"device_id" binding:"required"` // 设备 ID
+	DeviceID  string `json:"device_id" binding:"required"`  // 设备 ID
 	ChannelID string `json:"channel_id" binding:"required"` // 通道 ID
-	Command   string `json:"command" binding:"required"`   // 控制命令: stop, left, right, up, down, zoom_in, zoom_out, left_up, left_down, right_up, right_down, iris_in, iris_out, focus_in, focus_out
-	Speed     int    `json:"speed"`                        // 速度 (0-255), 默认 50
+	Command   string `json:"command" binding:"required"`    // 控制命令: stop, left, right, up, down, zoom_in, zoom_out, left_up, left_down, right_up, right_down, iris_in, iris_out, focus_in, focus_out
+	Speed     int    `json:"speed"`                         // 速度 (0-255), 默认 50
 }
 
 // ptzControl 云台方向控制

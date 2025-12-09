@@ -20,6 +20,19 @@ func NewAIAPI(aiService *ai.AIService) AIAPI {
 	return AIAPI{aiService: aiService}
 }
 
+// IsEnabled 检查 AI 服务是否已初始化且启用
+func (a AIAPI) IsEnabled() bool {
+	return a.aiService != nil && a.aiService.IsEnabled()
+}
+
+// Close 关闭 AI 服务
+func (a AIAPI) Close() error {
+	if a.aiService != nil {
+		return a.aiService.Close()
+	}
+	return nil
+}
+
 // registerAIAPI 注册 AI 检测 API
 func registerAIAPI(g gin.IRouter, api AIAPI, handler ...gin.HandlerFunc) {
 	group := g.Group("/ai", handler...)
@@ -47,10 +60,10 @@ type detectInput struct {
 
 // detectOutput 检测响应输出
 type detectOutput struct {
-	Success     bool                `json:"success"`
+	Success     bool                 `json:"success"`
 	Results     []ai.DetectionResult `json:"results"`
-	ProcessTime float64             `json:"process_time_ms"`
-	Alerts      []*ai.Alert         `json:"alerts,omitempty"`
+	ProcessTime float64              `json:"process_time_ms"`
+	Alerts      []*ai.Alert          `json:"alerts,omitempty"`
 }
 
 // detect 执行 AI 检测

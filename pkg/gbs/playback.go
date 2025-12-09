@@ -145,8 +145,8 @@ func (g *GB28181API) sipPlaybackPush(ch *Channel, in *PlaybackInput, port int, s
 			},
 		},
 		Medias: []sdp.Media{video},
-		SSRC:   g.getSSRC(1),                          // 回放类型
-		URI:    fmt.Sprintf("%s:0", ch.ChannelID),     // 回放需要 URI
+		SSRC:   g.getSSRC(1),                      // 回放类型
+		URI:    fmt.Sprintf("%s:0", ch.ChannelID), // 回放需要 URI
 	}
 
 	body := msg.Append(nil).AppendTo(nil)
