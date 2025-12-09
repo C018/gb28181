@@ -52,8 +52,6 @@ type NotificationHub struct {
 	clients map[string]*web.SSE
 }
 
-
-
 // AddClient 添加客户端
 func (h *NotificationHub) AddClient(id string, sse *web.SSE) {
 	h.mu.Lock()

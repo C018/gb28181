@@ -102,11 +102,11 @@ func setupRouter(r *gin.Engine, uc *Usecase) {
 	registerConfig(r, uc.ConfigAPI, auth)
 	registerSms(r, uc.SMSAPI, auth)
 	RegisterUser(r, uc.UserAPI, auth)
-	registerRecordAPI(r, uc.SMSAPI, auth)                  // 录像 API
-	registerNotificationAPI(r, uc.NotificationAPI, auth)   // 实时通知 API
-	registerPTZAPI(r, uc.GB28181API, auth)                 // 云台控制 API
-	registerPlaybackAPI(r, uc.GB28181API, auth)            // 录像回放 API
-	registerAlarmAPI(r, uc.GB28181API, auth)               // 报警事件 API
+	registerRecordAPI(r, uc.SMSAPI, auth)                // 录像 API
+	registerNotificationAPI(r, uc.NotificationAPI, auth) // 实时通知 API
+	registerPTZAPI(r, uc.GB28181API, auth)               // 云台控制 API
+	registerPlaybackAPI(r, uc.GB28181API, auth)          // 录像回放 API
+	registerAlarmAPI(r, uc.GB28181API, auth)             // 报警事件 API
 	if uc.AIAPI.IsEnabled() {
 		registerAIAPI(r, uc.AIAPI, auth) // AI 检测 API
 	}
