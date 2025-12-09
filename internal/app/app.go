@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gowvp/gb28181/internal/conf"
+	"github.com/gowvp/gb28181/internal/web/api"
 	"github.com/ixugo/goddd/domain/version/versionapi"
 	"github.com/ixugo/goddd/pkg/logger"
 	"github.com/ixugo/goddd/pkg/server"
@@ -43,7 +44,13 @@ func Run(bc *conf.Bootstrap) {
 		slog.Error("程序构建失败", "err", err)
 		panic(err)
 	}
-	defer cleanUp()
+	defer func() {
+		cleanUp()
+		// 额外清理 GoLive 和 AI 服务
+		if uc := api.GetGlobalUsecase(); uc != nil {
+			uc.Cleanup()
+		}
+	}()
 
 	svc := server.New(handler,
 		server.Port(strconv.Itoa(bc.Server.HTTP.Port)),

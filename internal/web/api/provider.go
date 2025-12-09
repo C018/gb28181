@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +17,9 @@ import (
 	"github.com/gowvp/gb28181/internal/core/push"
 	"github.com/gowvp/gb28181/internal/core/push/store/pushdb"
 	"github.com/gowvp/gb28181/internal/core/sms"
+	"github.com/gowvp/gb28181/pkg/ai"
 	"github.com/gowvp/gb28181/pkg/gbs"
+	"github.com/gowvp/gb28181/pkg/golive"
 	"github.com/ixugo/goddd/domain/uniqueid"
 	"github.com/ixugo/goddd/domain/uniqueid/store/uniqueiddb"
 	"github.com/ixugo/goddd/domain/version/versionapi"
@@ -40,8 +43,13 @@ var (
 		NewProxyAPI, NewProxyCore,
 		NewConfigAPI,
 		NewUserAPI,
+		NewAIService, NewAIAPI,
+		NewGoLiveServer,
 	)
 )
+
+// globalUsecase stores a reference to the usecase for cleanup
+var globalUsecase *Usecase
 
 type Usecase struct {
 	Conf       *conf.Bootstrap
@@ -55,12 +63,27 @@ type Usecase struct {
 	ProxyAPI   ProxyAPI
 	ConfigAPI  ConfigAPI
 
-	SipServer *gbs.Server
-	UserAPI   UserAPI
+	SipServer    *gbs.Server
+	UserAPI      UserAPI
+	AIAPI        AIAPI
+	GoLiveServer *golive.Server
+}
+
+// Cleanup 清理资源
+func (uc *Usecase) Cleanup() {
+	if uc.GoLiveServer != nil {
+		_ = uc.GoLiveServer.Stop()
+	}
+	if uc.AIAPI.aiService != nil {
+		_ = uc.AIAPI.aiService.Close()
+	}
 }
 
 // NewHTTPHandler 生成Gin框架路由内容
 func NewHTTPHandler(uc *Usecase) http.Handler {
+	// Store usecase globally for cleanup
+	globalUsecase = uc
+
 	cfg := uc.Conf.Server
 	// 检查是否设置了 JWT 密钥，如果未设置，则生成一个长度为 32 的随机字符串作为密钥
 	if cfg.HTTP.JwtSecret == "" {
@@ -80,9 +103,23 @@ func NewHTTPHandler(uc *Usecase) http.Handler {
 		web.SetupPProf(g, &cfg.HTTP.PProf.AccessIps) // 设置 Pprof 监控
 	}
 
+	// 启动 Go 流媒体服务器
+	if uc.GoLiveServer != nil && uc.Conf.GoLive.Enabled {
+		if err := uc.GoLiveServer.Start(); err != nil {
+			// 记录错误但不阻止应用启动
+			slog := slog.Default()
+			slog.Error("Failed to start GoLive server", "err", err)
+		}
+	}
+
 	setupRouter(g, uc) // 设置路由处理函数
 	uc.Version.RecordVersion()
 	return g // 返回配置好的 Gin 实例作为 http.Handler
+}
+
+// GetGlobalUsecase 获取全局 Usecase 实例（用于清理）
+func GetGlobalUsecase() *Usecase {
+	return globalUsecase
 }
 
 // NewUniqueID 唯一 id 生成器
@@ -112,4 +149,38 @@ func NewProtocols(adapter ipc.Adapter, sms sms.Core, proxyCore *proxy.Core, gbs 
 	protocols[ipc.TypeRTSP] = rtspadapter.NewAdapter(proxyCore, sms)
 	protocols[ipc.TypeGB28181] = gbadapter.NewAdapter(adapter, gbs, sms)
 	return protocols
+}
+
+// NewAIService 创建 AI 服务
+func NewAIService(bc *conf.Bootstrap) *ai.AIService {
+	config := ai.AIServiceConfig{
+		Enabled:       bc.AI.Enabled,
+		InferenceMode: ai.InferenceMode(bc.AI.InferenceMode),
+		Endpoint:      bc.AI.Endpoint,
+		APIKey:        bc.AI.APIKey,
+		Timeout:       bc.AI.Timeout,
+		ModelType:     bc.AI.ModelType,
+		ModelPath:     bc.AI.ModelPath,
+		DeviceType:    bc.AI.DeviceType,
+	}
+	return ai.NewAIService(config)
+}
+
+// NewGoLiveServer 创建 Go 流媒体服务器
+func NewGoLiveServer(bc *conf.Bootstrap) *golive.Server {
+	config := golive.ServerConfig{
+		Enabled:      bc.GoLive.Enabled,
+		RTMPPort:     bc.GoLive.RTMPPort,
+		RTSPPort:     bc.GoLive.RTSPPort,
+		HTTPFLVPort:  bc.GoLive.HTTPFLVPort,
+		HLSPort:      bc.GoLive.HLSPort,
+		PublicIP:     bc.GoLive.PublicIP,
+		EnableAuth:   bc.GoLive.EnableAuth,
+		AuthSecret:   bc.GoLive.AuthSecret,
+		HLSFragment:  bc.GoLive.HLSFragment,
+		HLSWindow:    bc.GoLive.HLSWindow,
+		RecordPath:   bc.GoLive.RecordPath,
+		EnableRecord: bc.GoLive.EnableRecord,
+	}
+	return golive.NewServer(config)
 }

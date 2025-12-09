@@ -41,19 +41,24 @@ func wireApp(bc *conf.Bootstrap, log *slog.Logger) (http.Handler, func(), error)
 	proxyAPI := api.NewProxyAPI(proxyCore)
 	configAPI := api.NewConfigAPI(db, bc)
 	userAPI := api.NewUserAPI(bc)
+	aiService := api.NewAIService(bc)
+	aiapi := api.NewAIAPI(aiService)
+	goliveServer := api.NewGoLiveServer(bc)
 	usecase := &api.Usecase{
-		Conf:       bc,
-		DB:         db,
-		Version:    versionapiAPI,
-		SMSAPI:     smsAPI,
-		WebHookAPI: webHookAPI,
-		UniqueID:   uniqueidCore,
-		MediaAPI:   pushAPI,
-		GB28181API: ipcapi,
-		ProxyAPI:   proxyAPI,
-		ConfigAPI:  configAPI,
-		SipServer:  server,
-		UserAPI:    userAPI,
+		Conf:         bc,
+		DB:           db,
+		Version:      versionapiAPI,
+		SMSAPI:       smsAPI,
+		WebHookAPI:   webHookAPI,
+		UniqueID:     uniqueidCore,
+		MediaAPI:     pushAPI,
+		GB28181API:   ipcapi,
+		ProxyAPI:     proxyAPI,
+		ConfigAPI:    configAPI,
+		SipServer:    server,
+		UserAPI:      userAPI,
+		AIAPI:        aiapi,
+		GoLiveServer: goliveServer,
 	}
 	handler := api.NewHTTPHandler(usecase)
 	return handler, func() {
