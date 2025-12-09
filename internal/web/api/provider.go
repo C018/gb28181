@@ -119,6 +119,11 @@ func NewHTTPHandler(uc *Usecase) http.Handler {
 		}
 	}
 
+	// 设置报警通知回调，将报警事件发送到通知中心
+	uc.SipServer.SetAlarmCallback(func(deviceID, channelID, alarmType, alarmPriority, description string) {
+		NotifyAlarmEvent(deviceID, channelID, alarmType, alarmPriority, description)
+	})
+
 	setupRouter(g, uc) // 设置路由处理函数
 	uc.Version.RecordVersion()
 	return g // 返回配置好的 Gin 实例作为 http.Handler

@@ -30,6 +30,9 @@ type GB28181API struct {
 	svr *Server
 
 	sms *sms.NodeManager
+
+	// 报警通知回调函数
+	alarmCallback func(deviceID, channelID, alarmType, alarmPriority, description string)
 }
 
 func NewGB28181API(cfg *conf.Bootstrap, store ipc.Adapter, sms *sms.NodeManager) *GB28181API {
@@ -215,4 +218,9 @@ func (g GB28181API) logout(deviceID string, changeFn func(*ipc.Device) error) er
 		d.Expires = 0
 		d.IsOnline = false
 	})
+}
+
+// SetAlarmCallback 设置报警通知回调函数
+func (g *GB28181API) SetAlarmCallback(callback func(deviceID, channelID, alarmType, alarmPriority, description string)) {
+	g.alarmCallback = callback
 }
