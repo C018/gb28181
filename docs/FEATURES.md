@@ -2,6 +2,148 @@
 
 本文档介绍 GB28181 项目中的各项功能实现和配置说明。
 
+## 功能状态总览
+
+### ✅ 已完成的功能
+
+1. **实时消息通知** - SSE 实时推送设备状态、流状态、报警等
+2. **播放鉴权（带时效）** - 基于时间戳的播放令牌系统
+3. **通道封面快照毛玻璃效果** - 可配置的快照模糊处理
+4. **录像功能** - 录像回放和控制 API
+5. **账号密码登录** - 通过配置文件管理账号密码
+6. **网页修改账号密码** - API 支持修改用户凭据
+7. **所有接口鉴权访问** - JWT 令牌认证保护所有敏感端点
+8. **GB28181 设备 ID 验证** - 20 位标准长度校验
+9. **MySQL 数据库支持** - 支持 SQLite/PostgreSQL/MySQL
+10. **反向代理** - 流媒体服务反向代理
+
+### 🚧 需要前端配合的功能
+
+以下功能的后端 API 已实现，需要前端界面支持：
+
+1. **网页设置 GB28181 ID** - 需要前端显示长度计数器
+2. **账号密码管理界面** - 前端登录和修改密码页面
+
+### 📋 待实现的功能
+
+1. **ONVIF 完整支持** - 需要扩展 ONVIF 协议功能
+2. **国际化 (i18n)** - 支持中文和 English
+3. **快照功能完善** - 自动快照、快照管理
+4. **镜像优化** - Docker 镜像体积优化
+
+## 账号密码管理 (User Authentication)
+
+### 概述
+系统支持简单的账号密码登录，通过配置文件指定默认账号密码，并提供 API 接口修改凭据。
+
+### 配置
+在 `config.toml` 中配置默认账号密码：
+
+```toml
+[server]
+# 登录用户名
+username = "admin"
+# 登录密码
+password = "admin"
+```
+
+### API 接口
+
+#### 登录接口
+```
+POST /user/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin"
+}
+
+Response:
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "user": "admin"
+}
+```
+
+#### 修改密码接口（需要鉴权）
+```
+PUT /user/user
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "username": "newadmin",
+  "password": "newpassword"
+}
+
+Response:
+{
+  "msg": "凭据更新成功"
+}
+```
+
+**注意**: 修改后的凭据会保存到配置文件中，下次启动时生效。
+
+## GB28181 设备管理
+
+### GB28181 设备 ID 验证
+
+添加设备时，系统会自动验证 GB28181 设备 ID：
+
+- **长度要求**: 必须为 20 位（标准要求）
+- **格式要求**: 必须为纯数字
+- **错误提示**: 提供清晰的错误信息，说明当前长度和标准要求
+
+**示例请求**:
+```json
+POST /devices
+{
+  "type": "GB28181",
+  "device_id": "34020000001320000001",
+  "name": "摄像头1"
+}
+```
+
+**错误示例**:
+```json
+{
+  "device_id": "3402000000132",  // 只有 13 位
+  "type": "GB28181"
+}
+
+Response:
+{
+  "error": "GB28181 设备 ID 必须为 20 位（当前: 13 位），少或多都可能导致信令故障"
+}
+```
+
+## 接口鉴权 (API Authentication)
+
+### 概述
+除了公开端点（健康检查、Webhook 回调）外，所有 API 接口都需要 JWT 令牌认证。
+
+### 保护的端点
+- ✅ 所有设备管理 API
+- ✅ 所有通道管理 API
+- ✅ PTZ 控制 API
+- ✅ 录像回放 API
+- ✅ 报警订阅 API
+- ✅ 配置管理 API
+- ✅ 流媒体代理 API
+- ✅ 实时通知订阅
+
+### 公开端点（无需鉴权）
+- `/health` - 健康检查
+- `/app/metrics/api` - 监控指标
+- `/user/login` - 登录接口
+- `/webhook/*` - 流媒体服务器回调
+
+### 使用方式
+1. 调用 `/user/login` 获取 token
+2. 在后续请求的 Header 中携带：`Authorization: Bearer <token>`
+3. Token 有效期为 3 天，过期后需重新登录
+
 ## 实时通知系统 (Real-time Notifications)
 
 ### 概述
