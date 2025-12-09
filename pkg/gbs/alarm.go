@@ -144,6 +144,35 @@ func (s *Server) AlarmUnsubscribe(deviceID string) error {
 	return s.gb.AlarmSubscribe(deviceID, 0) // Expires=0 表示取消订阅
 }
 
+// sipMessageAlarm 处理报警通知 (SIP MESSAGE 处理器)
+func (g *GB28181API) sipMessageAlarm(ctx *sip.Context) {
+	var alarm AlarmNotify
+	if err := sip.XMLDecode(ctx.Request.Body(), &alarm); err != nil {
+		ctx.Log.Error("Alarm Message Unmarshal xml err", "err", err)
+		ctx.String(400, "xml err")
+		return
+	}
+
+	ctx.Log.Info("收到报警通知",
+		"device_id", alarm.DeviceID,
+		"priority", alarm.AlarmPriority,
+		"method", alarm.AlarmMethod,
+		"time", alarm.AlarmTime,
+		"description", alarm.AlarmDescription,
+	)
+
+	// 发送报警通知到前端
+	if g.alarmCallback != nil {
+		alarmType := ""
+		if alarm.Info != nil {
+			alarmType = alarm.Info.AlarmType
+		}
+		g.alarmCallback(alarm.DeviceID, alarm.DeviceID, alarmType, alarm.AlarmPriority, alarm.AlarmDescription)
+	}
+
+	ctx.String(200, "OK")
+}
+
 // HandleAlarmNotify 处理报警通知 (由消息处理器调用)
 func (g *GB28181API) handleAlarmNotify(body []byte) (*AlarmNotify, error) {
 	var alarm AlarmNotify

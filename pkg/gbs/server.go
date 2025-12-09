@@ -62,6 +62,7 @@ func NewServer(cfg *conf.Bootstrap, store ipc.Adapter, sc sms.Core) (*Server, fu
 	msg.Handle("DeviceInfo", api.sipMessageDeviceInfo)
 	msg.Handle("ConfigDownload", api.sipMessageConfigDownload)
 	msg.Handle("DeviceConfig", api.handleDeviceConfig)
+	msg.Handle("Alarm", api.sipMessageAlarm) // 报警通知处理器
 	// msg.Handle("RecordInfo", api.handlerMessage)
 
 	c := Server{
@@ -223,4 +224,9 @@ func (s *Server) StopPlay(ctx context.Context, in *StopPlayInput) error {
 // QuerySnapshot 厂商实现抓图的少，sip 层已实现，先搁置
 func (s *Server) QuerySnapshot(deviceID, channelID string) error {
 	return s.gb.QuerySnapshot(deviceID, channelID)
+}
+
+// SetAlarmCallback 设置报警通知回调函数
+func (s *Server) SetAlarmCallback(callback func(deviceID, channelID, alarmType, alarmPriority, description string)) {
+	s.gb.SetAlarmCallback(callback)
 }
