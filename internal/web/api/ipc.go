@@ -31,7 +31,8 @@ import (
 var ErrDevice = reason.NewError("ErrDevice", "设备错误")
 
 const (
-	coverDir = "cover"
+	coverDir                = "cover"
+	GB28181DeviceIDLength   = 20 // GB28181 标准设备 ID 长度
 )
 
 // generatePlayToken 生成带时效的播放令牌
@@ -183,14 +184,12 @@ func (a IPCAPI) addDevice(c *gin.Context, in *ipc.AddDeviceInput) (any, error) {
 
 	// GB28181 设备 ID 长度校验（标准为 20 位）
 	if in.Type == ipc.TypeGB28181 {
-		if len(in.DeviceID) != 20 {
-			return nil, reason.ErrBadRequest.SetMsg(fmt.Sprintf("GB28181 设备 ID 必须为 20 位（当前: %d 位），少或多都可能导致信令故障", len(in.DeviceID)))
+		if len(in.DeviceID) != GB28181DeviceIDLength {
+			return nil, reason.ErrBadRequest.SetMsg(fmt.Sprintf("GB28181 设备 ID 必须为 %d 位（当前: %d 位），少或多都可能导致信令故障", GB28181DeviceIDLength, len(in.DeviceID)))
 		}
-		// 验证是否为纯数字
-		for _, ch := range in.DeviceID {
-			if ch < '0' || ch > '9' {
-				return nil, reason.ErrBadRequest.SetMsg("GB28181 设备 ID 必须为纯数字")
-			}
+		// 验证是否为纯数字（使用 strconv 更高效）
+		if _, err := strconv.ParseUint(in.DeviceID, 10, 64); err != nil {
+			return nil, reason.ErrBadRequest.SetMsg("GB28181 设备 ID 必须为纯数字")
 		}
 	}
 
