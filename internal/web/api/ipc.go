@@ -209,21 +209,24 @@ func (a IPCAPI) delDevice(c *gin.Context, _ *struct{}) (any, error) {
 	did := c.Param("id")
 	
 	// 在删除设备前，先获取所有通道以便清理快照
-	channels, _, err := a.ipc.FindChannelsForDevice(c.Request.Context(), &ipc.FindDeviceInput{
-		DeviceID: did,
-		Pager:    web.NewPagerFilterMaxSize(),
+	// 如果获取失败，仍继续删除设备，快照会留在磁盘上（可被后续覆盖）
+	channels, _, err := a.ipc.FindChannel(c.Request.Context(), &ipc.FindChannelInput{
+		DID:         did,
+		PagerFilter: web.NewPagerFilterMaxSize(),
 	})
 	if err != nil {
-		slog.WarnContext(c.Request.Context(), "failed to get channels for snapshot cleanup", "device_id", did, "err", err)
+		slog.WarnContext(c.Request.Context(), "failed to get channels for snapshot cleanup, snapshots may be orphaned", "device_id", did, "err", err)
+		// 不阻止设备删除操作，继续执行
 	}
 	
-	// 删除设备
+	// 删除设备（包括其通道记录）
 	result, err := a.ipc.DelDevice(c.Request.Context(), did)
 	if err != nil {
 		return nil, err
 	}
 	
 	// 删除通道快照
+	// 即使之前获取通道失败，这里仍尝试清理已知的通道快照
 	for _, ch := range channels {
 		if err := deleteCover(a.uc.Conf.ConfigDir, ch.ChannelID); err != nil {
 			slog.WarnContext(c.Request.Context(), "failed to delete channel snapshot", "channel_id", ch.ChannelID, "err", err)
