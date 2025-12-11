@@ -93,9 +93,14 @@ func readCover(dataDir, channelID string) ([]byte, error) {
 // deleteCover 删除通道快照
 func deleteCover(dataDir, channelID string) error {
 	path := readCoverPath(dataDir, channelID)
-	// 如果文件不存在，不返回错误
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil
+	// 检查文件是否存在及权限
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			// 文件不存在，无需删除
+			return nil
+		}
+		// 其他错误（如权限问题），返回错误
+		return err
 	}
 	return os.Remove(path)
 }
@@ -210,13 +215,15 @@ func (a IPCAPI) delDevice(c *gin.Context, _ *struct{}) (any, error) {
 	
 	// 在删除设备前，先获取所有通道以便清理快照
 	// 如果获取失败，仍继续删除设备，快照会留在磁盘上（可被后续覆盖）
-	channels, _, err := a.ipc.FindChannel(c.Request.Context(), &ipc.FindChannelInput{
+	channels := make([]*ipc.Channel, 0) // 初始化为空切片
+	if chs, _, err := a.ipc.FindChannel(c.Request.Context(), &ipc.FindChannelInput{
 		DID:         did,
 		PagerFilter: web.NewPagerFilterMaxSize(),
-	})
-	if err != nil {
+	}); err != nil {
 		slog.WarnContext(c.Request.Context(), "failed to get channels for snapshot cleanup, snapshots may be orphaned", "device_id", did, "err", err)
 		// 不阻止设备删除操作，继续执行
+	} else {
+		channels = chs
 	}
 	
 	// 删除设备（包括其通道记录）
