@@ -73,7 +73,6 @@ func validatePlayToken(token, secret string) bool {
 	return time.Now().Unix() < expiresAt
 }
 
-// TODO: 快照不会删除，只会覆盖，设备删除时也不会删除快照，待实现
 func writeCover(dataDir, channelID string, body []byte) error {
 	coverPath := filepath.Join(dataDir, coverDir)
 	if err := os.MkdirAll(coverPath, 0o777); err != nil {
@@ -89,6 +88,16 @@ func readCoverPath(dataDir, channelID string) string {
 
 func readCover(dataDir, channelID string) ([]byte, error) {
 	return os.ReadFile(readCoverPath(dataDir, channelID))
+}
+
+// deleteCover 删除通道快照
+func deleteCover(dataDir, channelID string) error {
+	path := readCoverPath(dataDir, channelID)
+	// 如果文件不存在，不返回错误
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil
+	}
+	return os.Remove(path)
 }
 
 type IPCAPI struct {
@@ -198,7 +207,30 @@ func (a IPCAPI) addDevice(c *gin.Context, in *ipc.AddDeviceInput) (any, error) {
 
 func (a IPCAPI) delDevice(c *gin.Context, _ *struct{}) (any, error) {
 	did := c.Param("id")
-	return a.ipc.DelDevice(c.Request.Context(), did)
+	
+	// 在删除设备前，先获取所有通道以便清理快照
+	channels, _, err := a.ipc.FindChannelsForDevice(c.Request.Context(), &ipc.FindDeviceInput{
+		DeviceID: did,
+		Pager:    web.NewPagerFilterMaxSize(),
+	})
+	if err != nil {
+		slog.WarnContext(c.Request.Context(), "failed to get channels for snapshot cleanup", "device_id", did, "err", err)
+	}
+	
+	// 删除设备
+	result, err := a.ipc.DelDevice(c.Request.Context(), did)
+	if err != nil {
+		return nil, err
+	}
+	
+	// 删除通道快照
+	for _, ch := range channels {
+		if err := deleteCover(a.uc.Conf.ConfigDir, ch.ChannelID); err != nil {
+			slog.WarnContext(c.Request.Context(), "failed to delete channel snapshot", "channel_id", ch.ChannelID, "err", err)
+		}
+	}
+	
+	return result, nil
 }
 
 func (a IPCAPI) queryCatalog(c *gin.Context, _ *struct{}) (any, error) {
