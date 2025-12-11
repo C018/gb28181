@@ -343,6 +343,28 @@ enable_snapshot_blur = false
 
 1. ONVIF 功能扩展（基础已支持）
 2. 快照功能完善（基础已支持）
+3. 设备删除时快照清理（✅ 已实现 - PR#6）
+
+---
+
+## 最新更新 (2025-12-11)
+
+### ✅ 新增功能 (PR#6)
+
+1. **快照自动清理** - 设备删除时自动清理相关通道快照
+   - 添加 `deleteCover()` 函数清理单个通道快照
+   - 更新 `delDevice()` 在删除设备前先清理所有通道快照
+   - 防止磁盘空间浪费
+
+2. **PTZ 预置位查询说明** - 明确 GB28181 标准限制
+   - 文档说明 GB28181 标准不支持预置位查询
+   - API 返回清晰的说明信息
+   - 建议使用本地存储或厂商扩展协议
+
+3. **前端集成指南** - 完整的前端开发文档
+   - 创建 `docs/FRONTEND_INTEGRATION.md`
+   - 包含所有待前端集成功能的详细说明
+   - 提供代码示例和 API 使用说明
 
 ---
 
@@ -352,6 +374,7 @@ enable_snapshot_blur = false
    - GB28181 ID 输入框（带长度计数）
    - 登录界面
    - 密码修改界面
+   - 参考文档: `docs/FRONTEND_INTEGRATION.md`
 
 2. **Docker 优化**: 单独创建 issue 进行镜像优化
 
@@ -361,5 +384,5 @@ enable_snapshot_blur = false
 
 ---
 
-**最后更新**: 2025-12-09
-**PR**: copilot/fix-real-time-message-issues
+**最后更新**: 2025-12-11
+**PR**: #6 - copilot/finish-incomplete-tasks
