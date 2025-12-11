@@ -13,6 +13,7 @@ import (
 // AIAPI AI 检测 API
 type AIAPI struct {
 	aiService *ai.AIService
+	uc        *Usecase
 }
 
 // NewAIAPI 创建 AI API
@@ -88,8 +89,17 @@ func (a AIAPI) detect(c *gin.Context, in *detectInput) (*detectOutput, error) {
 	alerts := a.aiService.ProcessDetection(in.ChannelID, resp.Results)
 
 	// 发送告警通知
-	for _, alert := range alerts {
-		NotifyAIAlert(alert)
+	if a.uc != nil && a.uc.NotificationAPI.hub != nil {
+		for _, alert := range alerts {
+			a.uc.NotificationAPI.hub.NotifyAIAlert(map[string]any{
+				"alert_id":   alert.ID,
+				"channel_id": alert.ChannelID,
+				"rule_id":    alert.RuleID,
+				"type":       alert.Type,
+				"detections": alert.Detections,
+				"created_at": alert.CreatedAt,
+			})
+		}
 	}
 
 	return &detectOutput{
@@ -238,21 +248,4 @@ func (a AIAPI) getStatus(c *gin.Context, _ *struct{}) (*statusOutput, error) {
 		DeviceType:    config.DeviceType,
 		RuleCount:     len(a.aiService.GetAllRules()),
 	}, nil
-}
-
-// NotifyAIAlert 发送 AI 告警通知
-func NotifyAIAlert(alert *ai.Alert) {
-	hub := GetNotificationHub()
-	hub.Broadcast(Notification{
-		Type:    NotifyTypeAIAlert,
-		Message: "AI 检测告警",
-		Data: map[string]any{
-			"alert_id":   alert.ID,
-			"channel_id": alert.ChannelID,
-			"rule_id":    alert.RuleID,
-			"type":       alert.Type,
-			"detections": alert.Detections,
-			"created_at": alert.CreatedAt,
-		},
-	})
 }

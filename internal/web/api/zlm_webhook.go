@@ -90,7 +90,7 @@ func (w WebHookAPI) onStreamChanged(c *gin.Context, in *onStreamChangedInput) (D
 	w.log.InfoContext(c.Request.Context(), "webhook onStreamChanged", "app", in.App, "stream", in.Stream, "schema", in.Schema, "mediaServerID", in.MediaServerID, "regist", in.Regist)
 
 	// 发送实时通知
-	NotifyStreamStatus(in.App, in.Stream, in.Regist)
+	w.uc.NotificationAPI.hub.NotifyStreamStatus(in.App, in.Stream, in.Regist)
 
 	if in.Regist || in.Schema != "rtmp" {
 		return newDefaultOutputOK(), nil
@@ -118,6 +118,12 @@ func (w WebHookAPI) onStreamChanged(c *gin.Context, in *onStreamChangedInput) (D
 // 播放流时会触发此事件。如果流不存在，则首先触发 on_play 事件，然后触发 on_stream_not_found 事件。
 // 播放rtsp流时，如果该流开启了rtsp专用认证（on_rtsp_realm），则不会触发on_play事件。
 // https://docs.zlmediakit.com/guide/media_server/web_hook_api.html#_6-on-play
+//
+// 播放令牌验证:
+// - 使用独立的 play_token 参数进行验证
+// - 令牌格式: timestamp.sign，其中 sign = MD5(timestamp + jwtSecret)
+// - 与 RTMP 推流鉴权分离，互不影响
+// - RTMP 推流使用 rtmp_secret 进行鉴权
 func (w WebHookAPI) onPlay(c *gin.Context, in *onPublishInput) (DefaultOutput, error) {
 	// 解析参数
 	params, err := url.ParseQuery(in.Params)
@@ -127,6 +133,7 @@ func (w WebHookAPI) onPlay(c *gin.Context, in *onPublishInput) (DefaultOutput, e
 	}
 
 	// 验证播放令牌(如果配置了过期时间)
+	// 此验证仅用于播放鉴权，不影响 RTMP 推流鉴权
 	if expireMin := w.conf.Server.PlayExpireMinutes; expireMin > 0 {
 		playToken := params.Get("play_token")
 		if playToken == "" {
@@ -140,6 +147,7 @@ func (w WebHookAPI) onPlay(c *gin.Context, in *onPublishInput) (DefaultOutput, e
 	}
 
 	// RTMP 流的 session 验证
+	// RTMP 推流鉴权在 onPublish 中处理，使用独立的 rtmp_secret
 	switch in.Schema {
 	case "rtmp":
 		session := params.Get("session")
@@ -180,6 +188,9 @@ func (w WebHookAPI) onRTPServerTimeout(c *gin.Context, in *onRTPServerTimeoutInp
 }
 
 // onStreamNotFound 流不存在事件
+// 当播放的流不存在时触发此事件，可以在此触发按需拉流或推流
+// 注意: 播放令牌验证已在 onPlay 事件中完成，此处仅处理流的自动拉取
+// 流程: onPlay (验证令牌) -> onStreamNotFound (拉流) -> onPlay (再次验证)
 // TODO: 重启后立即播放，会出发 "channel not exist" 待处理
 func (w WebHookAPI) onStreamNotFound(c *gin.Context, in *onStreamNotFoundInput) (DefaultOutput, error) {
 	w.log.InfoContext(c.Request.Context(), "webhook onStreamNotFound", "app", in.App, "stream", in.Stream, "schema", in.Schema, "mediaServerID", in.MediaServerID)
