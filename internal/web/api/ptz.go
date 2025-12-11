@@ -121,11 +121,13 @@ type queryPresetsInput struct {
 
 // queryPresets 查询预置位列表
 func (a IPCAPI) queryPresets(c *gin.Context, in *queryPresetsInput) (gin.H, error) {
-	// TODO: 实现预置位查询功能
-	// 需要在 gbs.Server 中添加 QueryPresets 方法
-	// 目前返回空列表表示功能待实现
+	// GB28181 标准不支持预置位查询命令，预置位存储在设备端
+	// 如需实现预置位列表功能，需要：
+	// 1. 在本地数据库存储预置位设置记录
+	// 2. 或使用设备厂商的私有扩展协议
+	// 当前实现返回空列表，表示功能待扩展
 	return gin.H{
-		"msg":     "预置位查询功能待实现",
+		"msg":     "GB28181标准不支持预置位查询，预置位存储在设备端。如需此功能，请在本地存储预置位记录。",
 		"presets": []any{},
 	}, nil
 }
